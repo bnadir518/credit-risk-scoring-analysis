@@ -19,15 +19,15 @@ A portfolio project demonstrating end-to-end credit risk analytics: data prepara
 
 ## Methodology & Findings
 
-### 1. SQL Risk Analysis (Delinquency Migration)
-Beyond basic aggregations, the project utilises advanced SQL (CTEs, Window Functions like `LAG()`) to build a **Delinquency Migration (Roll-rate) matrix**, tracking how accounts transition across repayment statuses month-over-month. For example, of accounts 1 month delinquent in month *t*, 32.0% were 2 months delinquent in *t+1* (where `PAY_x` is coded such that -1 = pay duly, 1 = 1 month delay, 2 = 2 months delay, etc.).
+### 1. SQL Risk Analysis
+Beyond basic aggregations, the project utilises SQL to conduct repayment-status default-rate analysis, portfolio segmentation, CTE + NTILE quartile analysis, and exposure concentration analysis.
 
 ### 2. PD Modelling (Probability of Default)
 The project compares a Logistic Regression baseline with a Random Forest model. Unweighted models were deliberately chosen to preserve the natural probability scale, ensuring the Mean Predicted PD (22.19%) closely matches the observed default rate (22.12%).
 
 **Test Set Performance:**
 | Metric | Logistic Regression | Random Forest (Unweighted) |
-|---|---|---|
+|
 | **ROC-AUC** | 0.7084 | 0.7748 |
 | **Gini** | 0.4168 | 0.5496 |
 | **KS Statistic** | 0.2850 | 0.4237 |
@@ -37,7 +37,7 @@ The project compares a Logistic Regression baseline with a Random Forest model. 
 Clients are segmented into a 5-grade scale based on fixed PD cutoffs. The model demonstrates monotonic rank-ordering capabilities.
 
 | Grade | Clients | Avg_PD | Obs_Default | Expected_Def | Actual_Def | EL (NTD) |
-|---|---|---|---|---|---|---|
+|---|
 | **1. Very Low (<5%)** | 431 | 3.5% | 4.9% | 15.08 | 21 | 1,997,425 |
 | **2. Low (5-15%)** | 2,509 | 10.3% | 10.5% | 258.32 | 264 | 21,835,470 |
 | **3. Medium (15-30%)** | 1,691 | 20.3% | 18.6% | 344.00 | 314 | 20,973,880 |
@@ -52,7 +52,7 @@ A simplified Basel-style Expected Loss formula is applied:
 Loss proxy = `LIMIT_BAL` × `actual_default` × `45%`. Because the same 45% LGD enters both sides, it cancels out; this backtest tests exposure-weighted PD calibration only, not loss severity. 
 
 | Metric | Value (NTD) | Difference vs Loss Proxy |
-|---|---|---|
+|
 | **Realized Loss Proxy** | 82,155,456 | 0.0% |
 | **Model EL (RF)** | 79,382,918 | -3.4% |
 | **Model EL (LR)** | 76,643,926 | -6.7% |
@@ -71,12 +71,16 @@ The model's EL is 3.4% below the proxy. The bootstrap 95% CI of the difference `
 ---
 
 ## Review Notes: The Impact of `class_weight` on PD Calibration
-A self-review of v1.1 revealed that training Random Forest with `class_weight='balanced'` artificially inflated the predicted probabilities well above the base rate. For context, a naive base-rate prediction yields a Brier score of ~0.1723. The v1.1 balanced model performed worse than this naive baseline (0.1758). 
+A self-review of v1.1 revealed that training Random Forest with `class_weight='balanced'` artificially inflated the predicted probabilities well above the base rate. For context, a naive base-rate prediction yields a Brier score of ~0.1723. The v1.1 balanced model performed worse than this naive baseline (OOF Brier ~0.1758). 
 
 I performed a 5-fold out-of-fold CV ablation study to select the best calibration strategy. Results showed the optimal solution was simply removing `class_weight`.
 
-| Strategy | 5-Fold OOF Brier Score | Mean Predicted - Observed |
-|---|---|---|
+| Strategy | OOF Brier (Train) | Held-out Brier (Test) | Mean Predicted - Observed (Test) |
+|---|
+| **v1.1 (RF, class_weight='balanced')** | ~0.1758 | 0.1764 | +19.63 pp |
+| **v1.2 (RF, Unweighted / No Calibration)** | 0.1338 | 0.1356 | +0.07 pp |
+
+
 | **v1.1 (RF, `class_weight='balanced'`)** | 0.1758 | +19.63 pp |
 | **v1.2 (RF, Unweighted / No Calibration)** | 0.1356 | +0.07 pp |
 
