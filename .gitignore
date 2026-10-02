@@ -1,0 +1,27 @@
+# Data files (large CSVs — download via UCI or ucimlrepo)
+data/raw/
+data/processed/
+
+# Jupyter checkpoints
+**/.ipynb_checkpoints/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE configs
+.vscode/
+.idea/
+
+# Credentials / secrets
+*.env
+*.key
